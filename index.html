@@ -462,7 +462,7 @@
 // ─────────────────────────────────────────────
 // CONFIGURATION — update SHEET_ID after setup
 // ─────────────────────────────────────────────
-const SHEET_ID = '105ZJiMh5Yw_cyE2fCcpIuNkhtenQ00NT';
+const SHEET_ID = '190DdDYI6dv07Qr2wH-O3ikjE-8uqPMgioHBNVyHq7DY';
 
 // Sheet tab names (must match exactly)
 const TABS = {
@@ -471,18 +471,46 @@ const TABS = {
   running: 'Running Balance'
 };
 
-const PROXY = 'https://api.allorigins.win/raw?url=';
+function fetchSheet(tab) {
+  return new Promise((resolve, reject) => {
+    const cb = '__gs_' + Math.random().toString(36).slice(2);
+    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&tq&sheet=${encodeURIComponent(tab)}&callback=${cb}`;
 
-function sheetUrl(tab) {
-  const base = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tab)}`;
-  return PROXY + encodeURIComponent(base);
-}
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error(`Timeout loading "${tab}"`));
+    }, 12000);
 
-async function fetchSheet(tab) {
-  const res = await fetch(sheetUrl(tab));
-  if (!res.ok) throw new Error(`Sheet "${tab}" returned ${res.status}. Make sure it's shared as "Anyone with the link".`);
-  const text = await res.text();
-  return parseCSV(text);
+    function cleanup() {
+      clearTimeout(timer);
+      delete window[cb];
+      const s = document.getElementById(cb);
+      if (s) s.remove();
+    }
+
+    window[cb] = function(raw) {
+      cleanup();
+      try {
+        const rows = (raw.table.rows || []).map(r =>
+          (r.c || []).map(c => {
+            if (!c) return '';
+            if (c.f != null) return c.f;
+            if (c.v != null) return c.v;
+            return '';
+          })
+        );
+        resolve(rows);
+      } catch(e) {
+        reject(new Error('Parse error: ' + e.message));
+      }
+    };
+
+    const s = document.createElement('script');
+    s.id = cb;
+    s.onerror = () => { cleanup(); reject(new Error(`Failed to load "${tab}"`)); };
+    s.src = url;
+    document.head.appendChild(s);
+  });
 }
 
 function parseCSV(text) {
@@ -530,8 +558,8 @@ function sign(type) {
 }
 
 function renderApp(summary, txns, running) {
-  // Summary row: balance, total_in, total_out, interest
-  const s = summary[1] || [];
+  // JSONP returns data rows only (no header) — row 0 is first data row
+  const s = summary[0] || [];
   const balance   = s[0] || '—';
   const totalIn   = s[1] || '—';
   const totalOut  = s[2] || '—';
@@ -539,10 +567,10 @@ function renderApp(summary, txns, running) {
   const asOf      = s[4] || '';
 
   // Update badge
-  document.getElementById('last-updated-badge').textContent = asOf ? `AS OF ${asOf.toUpperCase()}` : 'LIVE';
+  document.getElementById('last-updated-badge').textContent = asOf ? `AS OF ${String(asOf).toUpperCase()}` : 'LIVE';
 
-  // Transactions rows (skip header row 0)
-  const txnRows = txns.slice(1).filter(r => r[0]).map(r => {
+  // Transactions rows (all rows are data, no header to skip)
+  const txnRows = txns.filter(r => r[0]).map(r => {
     const [date, name, note, amount, type] = r;
     const ac = amountClass(type);
     const bc = badgeClass(type);
@@ -559,8 +587,8 @@ function renderApp(summary, txns, running) {
       </div>`;
   }).join('');
 
-  // Running balance rows (skip header row 0)
-  const runRows = running.slice(1).filter(r => r[0]).map((r, i, arr) => {
+  // Running balance rows (all rows are data)
+  const runRows = running.filter(r => r[0]).map((r, i, arr) => {
     const [date, desc, change, bal] = r;
     const isLast = i === arr.length - 1;
     const changeN = parseFloat(String(change).replace(/[^0-9.\-]/g, ''));
