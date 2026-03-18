@@ -461,26 +461,26 @@
 <script>
 // ═══════════════════════════════════════════════════════════
 //  CONFIGURATION
-//  After deploying Code.gs as a Web App, paste the URL below
 // ═══════════════════════════════════════════════════════════
 const SHEETDB_URL = 'https://sheetdb.io/api/v1/r5pjiufnfy9rx';
 
+// ═══════════════════════════════════════════════════════════
+//  DATA FETCHING
+// ═══════════════════════════════════════════════════════════
 async function fetchSheet(tab) {
   const res = await fetch(`${SHEETDB_URL}?sheet=${encodeURIComponent(tab)}`);
   if (!res.ok) throw new Error(`SheetDB error: ${res.status}`);
-  return await res.json(); // returns array of objects [{col: val}, ...]
+  return await res.json();
 }
 
-function sheetToRows(data) {
-  // SheetDB returns [{header1: val, header2: val}, ...] — convert to arrays
+function toRows(data) {
   if (!data || !data.length) return [];
   return data.map(obj => Object.values(obj));
 }
 
 // ═══════════════════════════════════════════════════════════
-//  RENDERING
+//  HELPERS
 // ═══════════════════════════════════════════════════════════
-
 function fmt(val) {
   const n = parseFloat(String(val).replace(/[^0-9.\-]/g, ''));
   if (isNaN(n)) return val;
@@ -501,6 +501,9 @@ function amountClass(type) {
   return 'debit';
 }
 
+// ═══════════════════════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════════════════════
 function renderApp(data) {
   const s = data.summary[0] || [];
   const balance  = s[0] || '—';
@@ -572,7 +575,7 @@ function renderApp(data) {
     <div class="partners-strip">
       <div class="partners-label">Partners</div>
       <div class="partner-tags">
-        <div class="partner-tag manager">Kim<span class="role">ACCOUNT MANAGER</span></div>
+        <div class="partner-tag manager"> Kim <span class="role">ACCOUNT MANAGER</span></div>
         <div class="partner-tag">Aira</div>
         <div class="partner-tag">Nicka</div>
         <div class="partner-tag">Jan</div>
@@ -604,6 +607,9 @@ function renderApp(data) {
   `;
 }
 
+// ═══════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════
 async function init() {
   try {
     const [summary, txns, running] = await Promise.all([
@@ -612,9 +618,9 @@ async function init() {
       fetchSheet('Running Balance')
     ]);
     renderApp({
-      summary: sheetToRows(summary),
-      txns:    sheetToRows(txns),
-      running: sheetToRows(running)
+      summary: toRows(summary),
+      txns:    toRows(txns),
+      running: toRows(running)
     });
   } catch (err) {
     document.getElementById('app').innerHTML = `
@@ -626,7 +632,9 @@ async function init() {
   }
 }
 
-// ── Password Gate ──────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+//  PASSWORD GATE
+// ═══════════════════════════════════════════════════════════
 const CORRECT_PASSWORD = 'matcharotnakj*';
 
 function checkPassword() {
@@ -652,487 +660,6 @@ function togglePw() {
   input.type = input.type === 'password' ? 'text' : 'password';
 }
 
-if (sessionStorage.getItem('matcharot_auth') === '1') {
-  document.getElementById('gate').remove();
-}
-
-init();
-</script>
-</body>
-</html>
-
-// ═══════════════════════════════════════════════════════════
-//  MATCHAROT FUND TRACKER — DATA
-//  Kim: update this section whenever there's a new GoTyme transaction
-// ═══════════════════════════════════════════════════════════
-
-const DATA = {
-  // ── Summary ─────────────────────────────────────────────
-  balance:  '1,968.98',
-  totalIn:  '15,007.97',
-  totalOut: '17,038.99',
-  interest: '7.97',
-  asOf:     'Mar 18, 2026',
-
-  // ── Transactions ─────────────────────────────────────────
-  // Format: [date, description, note, amount, type]
-  // type must be: IN, OUT, or INTEREST
-  transactions: [
-    ['Mar 18, 2026', 'Funds Moved (Business Use)', 'Withdrawal for operations',      '151.00',     'OUT'],
-    ['Mar 13, 2026', 'Funds Moved (Business Use)', 'Withdrawal for operations',      '439.00',     'OUT'],
-    ['Mar 02, 2026', 'Funds Moved (Business Use)', 'Withdrawal for operations',      '13,468.99',  'OUT'],
-    ['Mar 01, 2026', 'Interest Earned — February', 'GoTyme Go Save interest',        '7.97',       'INTEREST'],
-    ['Feb 24, 2026', 'Funds Added — Capital',      'Partner capital contribution',   '5,000.00',   'IN'],
-    ['Feb 23, 2026', 'Funds Moved (Business Use)', 'Withdrawal for operations',      '3,980.00',   'OUT'],
-    ['Feb 21, 2026', 'Funds Added — Capital',      'Partner capital contribution',   '5,000.00',   'IN'],
-    ['Feb 21, 2026', 'Funds Added — Capital',      'Partner capital contribution',   '5,000.00',   'IN'],
-    ['Feb 21, 2026', 'Funds Added — Capital',      'Partner capital contribution',   '5,000.00',   'IN'],
-  ],
-
-  // ── Running Balance ───────────────────────────────────────
-  // Format: [date, event, change, balance]
-  // Negative change = withdrawal, positive = deposit
-  running: [
-    ['Feb 21, 2026', '3 × Capital Contributions',  15000.00,  15000.00],
-    ['Feb 23, 2026', 'Withdrawal — Operations',    -3980.00,  11020.00],
-    ['Feb 24, 2026', 'Capital Contribution',        5000.00,  16020.00],
-    ['Mar 01, 2026', 'Interest — February',            7.97,  16027.97],
-    ['Mar 02, 2026', 'Withdrawal — Operations',   -13468.99,   2558.98],
-    ['Mar 13, 2026', 'Withdrawal — Operations',     -439.00,   2119.98],
-    ['Mar 18, 2026', 'Withdrawal — Operations',     -151.00,   1968.98],
-  ]
-};
-
-// ═══════════════════════════════════════════════════════════
-//  RENDERING — no need to edit below this line
-// ═══════════════════════════════════════════════════════════
-
-function fmt(val) {
-  const n = parseFloat(String(val).replace(/[^0-9.\-]/g, ''));
-  if (isNaN(n)) return val;
-  return '₱' + Math.abs(n).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function badgeClass(type) {
-  const t = String(type).toLowerCase();
-  if (t === 'in') return 'in';
-  if (t === 'interest') return 'interest';
-  return 'out';
-}
-
-function amountClass(type) {
-  const t = String(type).toLowerCase();
-  if (t === 'in') return 'credit';
-  if (t === 'interest') return 'interest';
-  return 'debit';
-}
-
-function renderApp() {
-  document.getElementById('last-updated-badge').textContent = `AS OF ${DATA.asOf.toUpperCase()}`;
-
-  const txnRows = DATA.transactions.map(r => {
-    const [date, name, note, amount, type] = r;
-    const ac = amountClass(type);
-    const bc = badgeClass(type);
-    const sign = ac === 'debit' ? '−' : '+';
-    return `
-      <div class="txn-row">
-        <div class="txn-date">${date}</div>
-        <div>
-          <div class="txn-name">${name}</div>
-          ${note ? `<div class="txn-sub">${note}</div>` : ''}
-        </div>
-        <div class="txn-amount ${ac}">${sign}${fmt(amount)}</div>
-        <div class="txn-badge ${bc}">${type}</div>
-      </div>`;
-  }).join('');
-
-  const runRows = DATA.running.map((r, i, arr) => {
-    const [date, desc, change, bal] = r;
-    const isLast = i === arr.length - 1;
-    const changeColor = change < 0 ? 'var(--red-soft)' : change === 0 ? 'var(--gold)' : 'var(--matcha-mid)';
-    const changeSign = change < 0 ? '−' : '+';
-    return `
-      <div class="running-row" ${isLast ? 'style="background:var(--matcha-foam)"' : ''}>
-        <div class="r-date">${date}</div>
-        <div class="r-desc">${desc}</div>
-        <div class="r-change" style="color:${changeColor}">${changeSign}${fmt(Math.abs(change))}</div>
-        <div class="r-balance">${fmt(bal)}</div>
-      </div>`;
-  }).join('');
-
-  document.getElementById('app').innerHTML = `
-    <div class="last-updated">
-      <span class="dot"></span>Updated by Kim · ${DATA.asOf}
-    </div>
-
-    <div class="balance-hero">
-      <div class="balance-label">GoTyme Go Save — Current Balance</div>
-      <div class="balance-amount"><span>₱</span>${DATA.balance}</div>
-      <div class="balance-meta">
-        <div class="meta-chip">
-          <div class="chip-label">Total Added</div>
-          <div class="chip-val positive">+${fmt(DATA.totalIn)}</div>
-        </div>
-        <div class="meta-chip">
-          <div class="chip-label">Total Withdrawn</div>
-          <div class="chip-val negative">−${fmt(DATA.totalOut)}</div>
-        </div>
-        <div class="meta-chip">
-          <div class="chip-label">Interest Earned</div>
-          <div class="chip-val gold">+${fmt(DATA.interest)}</div>
-        </div>
-        <div class="meta-chip">
-          <div class="chip-label">Account</div>
-          <div class="chip-val">GoTyme Go Save</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="partners-strip">
-      <div class="partners-label">Partners</div>
-      <div class="partner-tags">
-        <div class="partner-tag manager">👑 Kim <span class="role">ACCOUNT MANAGER</span></div>
-        <div class="partner-tag">Aira</div>
-        <div class="partner-tag">Nicka</div>
-        <div class="partner-tag">Jan</div>
-      </div>
-      <div style="margin-left:auto;font-size:12px;color:var(--ink-muted);font-family:'DM Mono',monospace;">Muhee Matcha · GoTyme PH</div>
-    </div>
-
-    <div class="section-title">Account Activity</div>
-    <div class="txn-list">
-      <div class="table-head">
-        <div>Date</div><div>Description</div>
-        <div style="text-align:right">Amount</div>
-        <div style="text-align:right">Type</div>
-      </div>
-      ${txnRows}
-    </div>
-
-    <div class="section-title">Running Balance</div>
-    <div class="running-bal">
-      <div class="running-head">
-        <div>Date</div><div>Event</div>
-        <div style="text-align:right">Change (₱)</div>
-        <div style="text-align:right">Balance (₱)</div>
-      </div>
-      ${runRows}
-    </div>
-
-    <div class="note-box">
-      <strong class="note-label">📌 Transparency Note</strong>
-      This GoTyme Go Save account is managed by <strong>Kim</strong> on behalf of all Matcharot partners (Aira, Nicka, and Jan). All withdrawals are used exclusively for business operations — purchasing matcha powder, packaging supplies, equipment, and delivery costs. Partners may request the full transaction receipt history from Kim at any time.
-    </div>
-  `;
-}
-
-// ── Password Gate ──────────────────────────────────────────
-const CORRECT_PASSWORD = 'matcharotnakj*';
-
-function checkPassword() {
-  const input = document.getElementById('pw-input');
-  const error = document.getElementById('gate-error');
-  if (input.value === CORRECT_PASSWORD) {
-    const gate = document.getElementById('gate');
-    gate.style.transition = 'opacity 0.4s ease';
-    gate.style.opacity = '0';
-    setTimeout(() => gate.remove(), 400);
-    sessionStorage.setItem('matcharot_auth', '1');
-  } else {
-    input.classList.add('error');
-    error.textContent = 'Incorrect password. Please try again.';
-    input.value = '';
-    input.focus();
-    setTimeout(() => { input.classList.remove('error'); error.textContent = ''; }, 3000);
-  }
-}
-
-function togglePw() {
-  const input = document.getElementById('pw-input');
-  input.type = input.type === 'password' ? 'text' : 'password';
-}
-
-if (sessionStorage.getItem('matcharot_auth') === '1') {
-  document.getElementById('gate').remove();
-}
-
-renderApp();
-</script>
-</body>
-</html>
-
-
-// Sheet tab names (must match exactly)
-const TABS = {
-  summary: 'Summary',
-  transactions: 'Transactions',
-  running: 'Running Balance'
-};
-
-function fetchSheet(tab) {
-  return new Promise((resolve, reject) => {
-    const cb = '__gs_' + Math.random().toString(36).slice(2);
-    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&tq&sheet=${encodeURIComponent(tab)}&callback=${cb}`;
-
-    const timer = setTimeout(() => {
-      cleanup();
-      reject(new Error(`Timeout loading "${tab}"`));
-    }, 12000);
-
-    function cleanup() {
-      clearTimeout(timer);
-      delete window[cb];
-      const s = document.getElementById(cb);
-      if (s) s.remove();
-    }
-
-    window[cb] = function(raw) {
-      cleanup();
-      try {
-        const rows = (raw.table.rows || []).map(r =>
-          (r.c || []).map(c => {
-            if (!c) return '';
-            if (c.f != null) return c.f;
-            if (c.v != null) return c.v;
-            return '';
-          })
-        );
-        resolve(rows);
-      } catch(e) {
-        reject(new Error('Parse error: ' + e.message));
-      }
-    };
-
-    const s = document.createElement('script');
-    s.id = cb;
-    s.onerror = () => { cleanup(); reject(new Error(`Failed to load "${tab}"`)); };
-    s.src = url;
-    document.head.appendChild(s);
-  });
-}
-
-function parseCSV(text) {
-  const rows = [];
-  const lines = text.split('\n');
-  for (const line of lines) {
-    if (!line.trim()) continue;
-    const cols = [];
-    let cur = '', inQ = false;
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (ch === '"') { inQ = !inQ; }
-      else if (ch === ',' && !inQ) { cols.push(cur.trim()); cur = ''; }
-      else { cur += ch; }
-    }
-    cols.push(cur.trim());
-    rows.push(cols);
-  }
-  return rows;
-}
-
-function fmt(val) {
-  const n = parseFloat(String(val).replace(/[^0-9.\-]/g, ''));
-  if (isNaN(n)) return val;
-  return '₱' + Math.abs(n).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function badgeClass(type) {
-  const t = String(type).toLowerCase();
-  if (t === 'in' || t === 'credit' || t === 'deposit') return 'in';
-  if (t === 'interest') return 'interest';
-  return 'out';
-}
-
-function amountClass(type) {
-  const t = String(type).toLowerCase();
-  if (t === 'in' || t === 'credit' || t === 'deposit') return 'credit';
-  if (t === 'interest') return 'interest';
-  return 'debit';
-}
-
-function sign(type) {
-  const t = String(type).toLowerCase();
-  return (t === 'out' || t === 'debit' || t === 'withdrawal') ? '−' : '+';
-}
-
-function renderApp(summary, txns, running) {
-  // JSONP returns data rows only (no header) — row 0 is first data row
-  const s = summary[0] || [];
-  const balance   = s[0] || '—';
-  const totalIn   = s[1] || '—';
-  const totalOut  = s[2] || '—';
-  const interest  = s[3] || '—';
-  const asOf      = s[4] || '';
-
-  // Update badge
-  document.getElementById('last-updated-badge').textContent = asOf ? `AS OF ${String(asOf).toUpperCase()}` : 'LIVE';
-
-  // Transactions rows (all rows are data, no header to skip)
-  const txnRows = txns.filter(r => r[0]).map(r => {
-    const [date, name, note, amount, type] = r;
-    const ac = amountClass(type);
-    const bc = badgeClass(type);
-    const s = (ac === 'debit') ? '−' : '+';
-    return `
-      <div class="txn-row">
-        <div class="txn-date">${date}</div>
-        <div>
-          <div class="txn-name">${name}</div>
-          ${note ? `<div class="txn-sub">${note}</div>` : ''}
-        </div>
-        <div class="txn-amount ${ac}">${s}${fmt(amount)}</div>
-        <div class="txn-badge ${bc}">${bc.toUpperCase()}</div>
-      </div>`;
-  }).join('');
-
-  // Running balance rows (all rows are data)
-  const runRows = running.filter(r => r[0]).map((r, i, arr) => {
-    const [date, desc, change, bal] = r;
-    const isLast = i === arr.length - 1;
-    const changeN = parseFloat(String(change).replace(/[^0-9.\-]/g, ''));
-    const changeColor = changeN < 0 ? 'var(--red-soft)' : changeN === 0 ? 'var(--gold)' : 'var(--matcha-mid)';
-    const changeSign = changeN < 0 ? '−' : '+';
-    return `
-      <div class="running-row" ${isLast ? 'style="background:var(--matcha-foam)"' : ''}>
-        <div class="r-date">${date}</div>
-        <div class="r-desc">${desc}</div>
-        <div class="r-change" style="color:${changeColor}">${changeSign}${fmt(Math.abs(changeN))}</div>
-        <div class="r-balance">${fmt(bal)}</div>
-      </div>`;
-  }).join('');
-
-  document.getElementById('app').innerHTML = `
-    <div class="last-updated">
-      <span class="dot"></span>Live data from Google Sheets
-    </div>
-
-    <div class="balance-hero">
-      <div class="balance-label">GoTyme Go Save — Current Balance</div>
-      <div class="balance-amount"><span>₱</span>${String(balance).replace(/[₱,]/g,'')}</div>
-      <div class="balance-meta">
-        <div class="meta-chip">
-          <div class="chip-label">Total Added</div>
-          <div class="chip-val positive">+${fmt(totalIn)}</div>
-        </div>
-        <div class="meta-chip">
-          <div class="chip-label">Total Withdrawn</div>
-          <div class="chip-val negative">−${fmt(totalOut)}</div>
-        </div>
-        <div class="meta-chip">
-          <div class="chip-label">Interest Earned</div>
-          <div class="chip-val gold">+${fmt(interest)}</div>
-        </div>
-        <div class="meta-chip">
-          <div class="chip-label">Account</div>
-          <div class="chip-val">GoTyme Go Save</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="partners-strip">
-      <div class="partners-label">Partners</div>
-      <div class="partner-tags">
-        <div class="partner-tag manager">👑 Kim <span class="role">ACCOUNT MANAGER</span></div>
-        <div class="partner-tag">Aira</div>
-        <div class="partner-tag">Nicka</div>
-        <div class="partner-tag">Jan</div>
-      </div>
-      <div style="margin-left:auto;font-size:12px;color:var(--ink-muted);font-family:'DM Mono',monospace;">Muhee Matcha · GoTyme PH</div>
-    </div>
-
-    <div class="section-title">Account Activity</div>
-    <div class="txn-list">
-      <div class="table-head">
-        <div>Date</div><div>Description</div>
-        <div style="text-align:right">Amount</div>
-        <div style="text-align:right">Type</div>
-      </div>
-      ${txnRows}
-    </div>
-
-    <div class="section-title">Running Balance</div>
-    <div class="running-bal">
-      <div class="running-head">
-        <div>Date</div><div>Event</div>
-        <div style="text-align:right">Change (₱)</div>
-        <div style="text-align:right">Balance (₱)</div>
-      </div>
-      ${runRows}
-    </div>
-
-    <div class="note-box">
-      <strong class="note-label">📌 Transparency Note</strong>
-      This GoTyme Go Save account is managed by <strong>Kim</strong> on behalf of all Matcharot partners (Aira, Nicka, and Jan). All withdrawals are used exclusively for business operations — purchasing matcha powder, packaging supplies, equipment, and delivery costs. Partners may request the full transaction receipt history from Kim at any time.
-    </div>
-  `;
-}
-
-async function init() {
-  if (SHEET_ID === 'YOUR_SHEET_ID_HERE') {
-    document.getElementById('app').innerHTML = `
-      <div class="state-box">
-        <div class="state-icon">⚙️</div>
-        <div class="state-title">Sheet not connected yet</div>
-        <div class="state-sub">
-          Open <code>index.html</code> and replace <code>YOUR_SHEET_ID_HERE</code>
-          with your Google Sheet ID, then re-deploy to GitHub Pages.
-          <br><br>
-          See the <a href="README.md">README</a> for full setup instructions.
-        </div>
-      </div>`;
-    document.getElementById('last-updated-badge').textContent = 'SETUP NEEDED';
-    return;
-  }
-
-  try {
-    const [summary, txns, running] = await Promise.all([
-      fetchSheet(TABS.summary),
-      fetchSheet(TABS.transactions),
-      fetchSheet(TABS.running)
-    ]);
-    renderApp(summary, txns, running);
-  } catch (err) {
-    document.getElementById('app').innerHTML = `
-      <div class="state-box">
-        <div class="state-icon">⚠️</div>
-        <div class="state-title">Couldn't load data</div>
-        <div class="state-sub">
-          Make sure your Google Sheet is published to the web.<br>
-          <em>File → Share → Publish to web → Entire document → CSV</em><br><br>
-          Error: ${err.message}
-        </div>
-      </div>`;
-  }
-}
-
-// ── Password Gate ──
-const CORRECT_PASSWORD = 'matcharotnakj*';
-
-function checkPassword() {
-  const input = document.getElementById('pw-input');
-  const error = document.getElementById('gate-error');
-  if (input.value === CORRECT_PASSWORD) {
-    const gate = document.getElementById('gate');
-    gate.style.transition = 'opacity 0.4s ease';
-    gate.style.opacity = '0';
-    setTimeout(() => gate.remove(), 400);
-    sessionStorage.setItem('matcharot_auth', '1');
-  } else {
-    input.classList.add('error');
-    error.textContent = 'Incorrect password. Please try again.';
-    input.value = '';
-    input.focus();
-    setTimeout(() => { input.classList.remove('error'); error.textContent = ''; }, 3000);
-  }
-}
-
-function togglePw() {
-  const input = document.getElementById('pw-input');
-  input.type = input.type === 'password' ? 'text' : 'password';
-}
-
-// Auto-unlock if already authenticated this session
 if (sessionStorage.getItem('matcharot_auth') === '1') {
   document.getElementById('gate').remove();
 }
