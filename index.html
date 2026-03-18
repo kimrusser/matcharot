@@ -462,7 +462,7 @@
 // ─────────────────────────────────────────────
 // CONFIGURATION — update SHEET_ID after setup
 // ─────────────────────────────────────────────
-const SHEET_ID = '190DdDYI6dv07Qr2wH-O3ikjE-8uqPMgioHBNVyHq7DY';
+const SHEET_ID = '105ZJiMh5Yw_cyE2fCcpIuNkhtenQ00NT';
 
 // Sheet tab names (must match exactly)
 const TABS = {
@@ -471,13 +471,16 @@ const TABS = {
   running: 'Running Balance'
 };
 
-function csvUrl(tab) {
-  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tab)}`;
+const PROXY = 'https://corsproxy.io/?';
+
+function sheetUrl(tab) {
+  const base = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tab)}`;
+  return PROXY + encodeURIComponent(base);
 }
 
-async function fetchCSV(tab) {
-  const res = await fetch(csvUrl(tab));
-  if (!res.ok) throw new Error(`Failed to fetch sheet: ${tab}`);
+async function fetchSheet(tab) {
+  const res = await fetch(sheetUrl(tab));
+  if (!res.ok) throw new Error(`Sheet "${tab}" returned ${res.status}. Make sure it's shared as "Anyone with the link".`);
   const text = await res.text();
   return parseCSV(text);
 }
@@ -657,9 +660,9 @@ async function init() {
 
   try {
     const [summary, txns, running] = await Promise.all([
-      fetchCSV(TABS.summary),
-      fetchCSV(TABS.transactions),
-      fetchCSV(TABS.running)
+      fetchSheet(TABS.summary),
+      fetchSheet(TABS.transactions),
+      fetchSheet(TABS.running)
     ]);
     renderApp(summary, txns, running);
   } catch (err) {
