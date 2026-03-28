@@ -534,7 +534,11 @@ function renderApp(data) {
   const runRows = data.running.map((r, i, arr) => {
     const [date, desc, change, bal] = r;
     const isLast = i === arr.length - 1;
-    const changeN = parseFloat(String(change).replace(/[^0-9.\-]/g, ''));
+    const str = String(change).trim();
+    const isNeg = str.startsWith('(') && str.endsWith(')');
+    const changeN = isNeg 
+     ? -parseFloat(str.replace(/[^0-9.]/g, '')) 
+     : parseFloat(str.replace(/[^0-9.\-]/g, ''));
     const changeColor = changeN < 0 ? 'var(--red-soft)' : changeN === 0 ? 'var(--gold)' : 'var(--matcha-mid)';
     const changeSign = changeN < 0 ? '−' : '+';
     return `
